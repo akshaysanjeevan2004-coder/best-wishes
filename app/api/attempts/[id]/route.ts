@@ -21,8 +21,8 @@ export const GET = handle(async (_req, { params }) => {
   if (t.finished) return ok({ finished: true, status: 'AUTO_SUBMITTED', resultUrl: `/result/${a.id}` }); // defensive
 
   const qs = must(await db().from('questions')
-    .select('id,question_number,question_text,option_a,option_b,option_c,option_d') // NO correct_option
-    .eq('paper_id', paper.id).eq('section', t.section).order('question_number')) as Record<string, string | number>[];
+    .select('id,question_number,question_text,option_a,option_b,option_c,option_d,image_path,image_whole') // NO correct_option
+    .eq('paper_id', paper.id).eq('section', t.section).order('question_number')) as Record<string, string | number | boolean | null>[];
 
   const ans = must(await db().from('answers').select('question_id,selected_option,questions(section)')
     .eq('attempt_id', a.id)) as unknown as { question_id: string; selected_option: number | null; questions: { section: number } | { section: number }[] }[];
@@ -45,6 +45,8 @@ export const GET = handle(async (_req, { params }) => {
     questions: qs.map((q) => ({
       id: q.id, number: q.question_number, text: q.question_text,
       options: [q.option_a, q.option_b, q.option_c, q.option_d],
+      image: q.image_path ? `/api/attempts/${a.id}/image/${q.id}` : null,
+      imageWhole: q.image_path ? q.image_whole !== false : false,
     })),
     answers,
     sections: Array.from({ length: paper.section_count }, (_, i) => ({

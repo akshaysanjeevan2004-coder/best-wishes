@@ -30,7 +30,7 @@ export default async function ResultDetail({ params }: { params: { id: string } 
           <thead className="border-b bg-slate-50"><tr><th className="th">Q</th><th className="th">Section</th><th className="th">Candidate</th><th className="th">Correct</th><th className="th">Result</th></tr></thead>
           <tbody className="divide-y divide-slate-100">
             {rows.map((r) => (
-              <tr key={r.number}><td className="td font-medium">Q{r.number}</td><td className="td">{r.section}</td>
+              <tr key={r.number}><td className="td font-medium">Q{r.number}{r.image && <a className="ml-2 text-xs font-normal text-brand-700 hover:underline" href={`/api/admin/images/${r.id}`} target="_blank" rel="noreferrer">view</a>}</td><td className="td">{r.section}</td>
                 <td className="td">{r.yourOption === null ? '-' : LETTERS[r.yourOption]}</td><td className="td">{LETTERS[r.correctOption]}</td>
                 <td className={`td font-medium ${tone[r.status]}`}>{r.status === 'CORRECT' ? 'Correct' : r.status === 'WRONG' ? 'Wrong' : 'Unanswered'}</td></tr>
             ))}

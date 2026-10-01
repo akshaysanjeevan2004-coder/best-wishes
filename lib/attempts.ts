@@ -33,14 +33,14 @@ export async function syncAttempt(attempt: Attempt, paper: Paper): Promise<Attem
 }
 
 export type ResultRow = {
-  number: number; section: number; text: string; options: string[];
+  id: string; image: boolean; imageWhole: boolean; number: number; section: number; text: string; options: string[];
   yourOption: number | null; correctOption: number; status: 'CORRECT' | 'WRONG' | 'UNANSWERED';
 };
 
 /** Only call for a FINISHED attempt - this contains the correct answers. */
 export async function buildResultRows(attempt: Attempt, paper: Paper): Promise<ResultRow[]> {
   const qs = must(await db().from('questions')
-    .select('id,question_number,section,question_text,option_a,option_b,option_c,option_d,correct_option')
+    .select('id,question_number,section,question_text,option_a,option_b,option_c,option_d,correct_option,image_path,image_whole')
     .eq('paper_id', paper.id).order('question_number')) as Record<string, any>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
   const ans = must(await db().from('answers').select('question_id,selected_option').eq('attempt_id', attempt.id)) as
     { question_id: string; selected_option: number | null }[];
@@ -48,7 +48,7 @@ export async function buildResultRows(attempt: Attempt, paper: Paper): Promise<R
   return qs.map((q) => {
     const sel = map.get(q.id) ?? null;
     return {
-      number: q.question_number, section: q.section, text: q.question_text,
+      id: q.id, image: !!q.image_path, imageWhole: !!q.image_path && q.image_whole !== false, number: q.question_number, section: q.section, text: q.question_text,
       options: [q.option_a, q.option_b, q.option_c, q.option_d],
       yourOption: sel, correctOption: q.correct_option,
       status: sel === null ? 'UNANSWERED' : sel === q.correct_option ? 'CORRECT' : 'WRONG',

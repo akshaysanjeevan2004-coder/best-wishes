@@ -61,3 +61,12 @@ test('normCorrect accepts 0-3 and A-D only', () => {
   assert.equal(normCorrect('c'), 2); assert.equal(normCorrect(3), 3);
   assert.equal(normCorrect(4), null); assert.equal(normCorrect(''), null); assert.equal(normCorrect(null), null);
 });
+
+import { textFlags } from '../lib/flags';
+test('text clues flag tables / empty options / math symbols, but not plain questions', () => {
+  const plain = textFlags({ question_text: 'Who was the first PM of India?', options: ['A', 'B', 'C', 'D'] });
+  assert.deepEqual(plain, []);
+  assert.ok(textFlags({ question_text: 'Table - daily production of 5 machines', options: ['1', '2', '3', '4'] }).some((f) => f.level === 'image'));
+  assert.ok(textFlags({ question_text: 'Pick one', options: ['1', '', '3', '4'] }).some((f) => f.level === 'image'));
+  assert.ok(textFlags({ question_text: 'p = √3 + √7', options: ['a', 'b', 'c', 'd'] }).some((f) => f.level === 'check'));
+});

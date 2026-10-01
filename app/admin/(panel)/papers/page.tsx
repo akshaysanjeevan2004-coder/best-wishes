@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { db, must } from '@/lib/supabase';
 import { fmtDateTime } from '@/lib/config';
 import ImportPanel from '@/components/admin/ImportPanel';
@@ -23,7 +24,7 @@ export default async function PapersPage() {
                   <td className="td">{p.total_questions} ({p.section_count} x {p.questions_per_section})</td>
                   <td className="td text-sm">+{Number(p.correct_marks)} / {Number(p.wrong_marks)}</td>
                   <td className="td text-xs text-slate-500">{fmtDateTime(p.created_at)}</td>
-                  <td className="td text-right"><DeletePaperButton id={p.id} /></td>
+                  <td className="td whitespace-nowrap text-right"><Link href={`/admin/papers/${p.id}`} className="mr-4 text-sm font-medium text-brand-700 hover:underline">Screenshots</Link><DeletePaperButton id={p.id} /></td>
                 </tr>
               ))}
               {papers.length === 0 && <tr><td className="td text-slate-500" colSpan={5}>No papers yet. Import one above.</td></tr>}

@@ -39,9 +39,13 @@ create table if not exists questions (
   option_c         text not null,
   option_d         text not null,
   correct_option   smallint not null check (correct_option between 0 and 3),
+  image_path       text,          -- optional screenshot (table / equation / picture) stored in the private Storage bucket
+  image_whole      boolean not null default true,  -- true: screenshot is the WHOLE question incl. options (hide text); false: screenshot supplements the text
   created_at       timestamptz not null default now(),
   unique (paper_id, question_number)
 );
+alter table questions add column if not exists image_path text;   -- (for databases created before image support)
+alter table questions add column if not exists image_whole boolean not null default true;
 create index if not exists questions_paper_section_idx on questions(paper_id, section, question_number);
 
 create table if not exists daily_papers (
@@ -209,13 +213,21 @@ begin
   returning id into pid;
 
   insert into questions(paper_id, question_number, section, question_text,
-                        option_a, option_b, option_c, option_d, correct_option)
+                        option_a, option_b, option_c, option_d, correct_option, image_path)
   select pid, (q->>'question_number')::int, ((q->>'question_number')::int - 1) / spq + 1,
          q->>'question_text', q->'options'->>0, q->'options'->>1, q->'options'->>2, q->'options'->>3,
-         (q->>'correct_option')::smallint
+         (q->>'correct_option')::smallint, nullif(q->>'image_path', '')
   from jsonb_array_elements(p->'questions') q;
   return pid;
 end $$;
+
+-- ---------------------------------------------------------------------
+-- PRIVATE Storage bucket for question images (tables / equations / pictures).
+-- Private = nobody can open files directly; the app serves an image only to a
+-- candidate whose section is open right now (see /api/attempts/:id/image/:qid).
+-- ---------------------------------------------------------------------
+insert into storage.buckets (id, name, public) values ('question-images', 'question-images', false)
+on conflict (id) do nothing;
 
 -- The app talks to these functions with the service-role key only.
 revoke all on function finalize_attempt(uuid, text) from public, anon, authenticated;

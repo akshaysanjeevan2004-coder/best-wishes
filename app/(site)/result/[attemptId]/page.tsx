@@ -62,10 +62,14 @@ export default async function ResultPage({ params }: { params: { attemptId: stri
             {wrong.map((r) => (
               <div key={r.number} className="card p-5">
                 <p className="text-sm font-semibold text-slate-500">Question {r.number} &middot; Section {r.section}</p>
-                <p className="mt-1 whitespace-pre-line font-medium">{r.text}</p>
+                {!r.imageWhole && <p className="mt-1 whitespace-pre-line font-medium">{r.text}</p>}
+                {r.image && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={`/api/attempts/${a.id}/image/${r.id}`} alt={`Question ${r.number}`} loading="lazy" className="mt-2 max-w-full rounded-lg border border-slate-200" />
+                )}
                 <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-                  <p className="rounded-lg bg-red-50 px-3 py-2 text-red-900"><b>Your answer: {LETTERS[r.yourOption!]}</b> &mdash; {r.options[r.yourOption!]}</p>
-                  <p className="rounded-lg bg-brand-50 px-3 py-2 text-brand-900"><b>Correct answer: {LETTERS[r.correctOption]}</b> &mdash; {r.options[r.correctOption]}</p>
+                  <p className="rounded-lg bg-red-50 px-3 py-2 text-red-900"><b>Your answer: {LETTERS[r.yourOption!]}</b>{!r.imageWhole && <> &mdash; {r.options[r.yourOption!]}</>}</p>
+                  <p className="rounded-lg bg-brand-50 px-3 py-2 text-brand-900"><b>Correct answer: {LETTERS[r.correctOption]}</b>{!r.imageWhole && <> &mdash; {r.options[r.correctOption]}</>}</p>
                 </div>
               </div>
             ))}

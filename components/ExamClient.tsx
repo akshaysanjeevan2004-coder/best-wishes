@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 type Paper = { id: string; title: string; totalQuestions: number; sections: number; perSection: number; sectionMinutes: number };
-type Q = { id: string; number: number; text: string; options: string[] };
+type Q = { id: string; number: number; text: string; options: string[]; image: string | null; imageWhole: boolean };
 type Sec = { number: number; state: 'locked' | 'current' | 'upcoming'; answered: number; total: number };
 type State = {
   section: number; sectionCount: number; sectionEndsAt: number; examEndsAt: number; serverNow: number;
@@ -50,6 +50,8 @@ export default function ExamClient({ paper, candidateName, initialAttemptId }:
       if (curSection.current && d.section !== curSection.current) setIdx(0);
       curSection.current = d.section;
       setSt(d); setAnswers(d.answers); setErr('');
+      // Pre-load this section's question images so moving between questions is instant (and survives a brief disconnect).
+      (d.questions as Q[]).forEach((x) => { if (x.image) { const im = new Image(); im.src = x.image; } });
     } catch { setErr('Connection problem - your timer keeps running on the server. Reconnecting...'); }
     finally { syncing.current = false; }
   }, [attemptId, goResult]);
@@ -173,6 +175,7 @@ export default function ExamClient({ paper, candidateName, initialAttemptId }:
 
   /* ---------------- exam screen ---------------- */
   const q = st.questions[Math.min(idx, st.questions.length - 1)];
+  const whole = !!q.image && q.imageWhole; // screenshot IS the whole question -> show only A-D buttons
   const urgent = remaining <= 60;
   const lastSection = st.section === st.sectionCount;
   const answeredHere = st.questions.filter((x) => answers[x.id] !== undefined).length;
@@ -204,15 +207,19 @@ export default function ExamClient({ paper, candidateName, initialAttemptId }:
       <div className="mx-auto grid max-w-6xl gap-6 px-4 py-6 lg:grid-cols-[1fr_280px]">
         <section className="card p-6">
           <p className="text-sm font-semibold text-slate-500">Question {q.number}</p>
-          <p className="mt-2 whitespace-pre-line text-lg leading-relaxed">{q.text}</p>
-          <div className="mt-5 space-y-3" role="radiogroup" aria-label={`Options for question ${q.number}`}>
+          {!whole && <p className="mt-2 whitespace-pre-line text-lg leading-relaxed">{q.text}</p>}
+          {q.image && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img key={q.id} src={q.image} alt={`Question ${q.number}`} className="mt-3 max-w-full rounded-lg border border-slate-200 bg-white" />
+          )}
+          <div className={whole ? 'mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4' : 'mt-5 space-y-3'} role="radiogroup" aria-label={`Options for question ${q.number}`}>
             {q.options.map((o, i) => {
               const on = answers[q.id] === i;
               return (
                 <button key={i} role="radio" aria-checked={on} onClick={() => choose(q, i)}
-                  className={`flex w-full items-start gap-3 rounded-xl border-2 px-4 py-3 text-left transition ${on ? 'border-brand-600 bg-brand-50' : 'border-slate-200 bg-white hover:border-slate-400'}`}>
-                  <span className={`mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full border-2 text-xs font-bold ${on ? 'border-brand-700 bg-brand-700 text-white' : 'border-slate-400 text-slate-600'}`}>{L[i]}</span>
-                  <span className="text-base">{o}</span>
+                  className={`flex w-full items-center gap-3 rounded-xl border-2 px-4 py-3 text-left transition ${whole ? 'justify-center' : 'items-start'} ${on ? 'border-brand-600 bg-brand-50' : 'border-slate-200 bg-white hover:border-slate-400'}`}>
+                  <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border-2 text-xs font-bold ${on ? 'border-brand-700 bg-brand-700 text-white' : 'border-slate-400 text-slate-600'}`}>{L[i]}</span>
+                  {!whole && <span className="text-base">{o}</span>}
                 </button>
               );
             })}

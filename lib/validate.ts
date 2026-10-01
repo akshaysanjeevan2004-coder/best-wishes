@@ -4,6 +4,7 @@ export type DraftQ = {
   question_text: string;
   options: string[];
   correct_option: number | string | null;
+  image_path?: string | null;   // set only by the offline importer (scripts/pdf_to_paper.py --upload)
 };
 export type PaperShape = { sections: number; perSection: number };
 export const DEFAULT_SHAPE: PaperShape = { sections: 4, perSection: 25 };
@@ -49,7 +50,7 @@ export type CleanPaper = {
   title: string; description: string; source_filename: string;
   correct_marks: number; wrong_marks: number;
   section_count: number; questions_per_section: number; section_seconds: number;
-  questions: { question_number: number; question_text: string; options: string[]; correct_option: number }[];
+  questions: { question_number: number; question_text: string; options: string[]; correct_option: number; image_path: string | null }[];
 };
 
 export function validatePaperInput(input: Record<string, unknown>, shape: PaperShape = DEFAULT_SHAPE):
@@ -72,6 +73,7 @@ export function validatePaperInput(input: Record<string, unknown>, shape: PaperS
       question_text: q.question_text.trim(),
       options: q.options.map((o) => o.trim()),
       correct_option: normCorrect(q.correct_option) as number,
+      image_path: typeof q.image_path === 'string' && /^[\w\-./]{1,200}$/.test(q.image_path) && !q.image_path.includes('..') ? q.image_path : null,
     }))
     .sort((a, b) => a.question_number - b.question_number);
   return {
