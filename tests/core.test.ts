@@ -1,0 +1,63 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import { computeTiming } from '../lib/exam';
+import { parseExamText } from '../lib/parser';
+import { validateQuestions, validatePaperInput, normCorrect } from '../lib/validate';
+
+const cfg = { section_count: 4, section_seconds: 900 };
+const S = 1_000_000;
+const at = (sec: number) => computeTiming(S, S + sec * 1000, cfg);
+
+test('section boundaries: 0-899 -> 1, 900-1799 -> 2, 1800-2699 -> 3, 2700-3599 -> 4, 3600+ finished', () => {
+  const expect: [number, number | 'done'][] = [[0, 1], [899.9, 1], [900, 2], [1799, 2], [1800, 3], [2699, 3], [2700, 4], [3599.9, 4], [3600, 'done'], [9999, 'done']];
+  for (const [sec, want] of expect) {
+    const t = at(sec);
+    assert.equal(t.finished ? 'done' : t.section, want, `at ${sec}s`);
+  }
+});
+
+test('client clock going backwards cannot extend time (server passes its own now)', () => {
+  const t = computeTiming(S, S - 5000, cfg); // "now" earlier than start => elapsed clamped to 0
+  assert.equal(t.finished, false);
+  if (!t.finished) assert.equal(t.section, 1);
+});
+
+test('refresh at 7 minutes leaves ~8 minutes in section 1', () => {
+  const t = at(420);
+  assert.ok(!t.finished);
+  if (!t.finished) assert.equal(Math.round((t.sectionEndsAtMs - (S + 420_000)) / 1000), 480);
+});
+
+test('sample text parses to the exact sample JSON (3 different PDF layouts)', () => {
+  const text = fs.readFileSync('data/sample-paper.txt', 'utf8');
+  const truth = JSON.parse(fs.readFileSync('data/sample-paper.json', 'utf8')).questions;
+  const r = parseExamText(text, 100);
+  assert.deepEqual(r.errors, []);
+  assert.deepEqual(r.questions, truth);
+  assert.deepEqual(validateQuestions(r.questions), []);
+});
+
+test('missing option marker is reported per question, never silently accepted', () => {
+  const t = 'Mock\n1. Two plus two?\n(a) 3\n(b) 4\n(c) 5\n(d) 6\n2. Capital of France?\n(a) Rome\n(b) Paris\n(d) Madrid\n\nAnswer Key\n1. (b) 2. (b)';
+  const r = parseExamText(t, 2);
+  assert.ok(r.errors.some((e) => /Question 2/.test(e) && /option marker C/.test(e)));
+  assert.equal(r.questions[0].correct_option, 1);
+});
+
+test('validation catches wrong counts, duplicates and missing options', () => {
+  const sample = JSON.parse(fs.readFileSync('data/sample-paper.json', 'utf8'));
+  assert.equal(validatePaperInput(sample).errors.length, 0);
+  const short = { ...sample, questions: sample.questions.slice(0, 99) };
+  assert.ok(validatePaperInput(short).errors.some((e: string) => /99/.test(e)));
+  const broken = JSON.parse(JSON.stringify(sample)); broken.questions[46].options[2] = '';
+  assert.ok(validatePaperInput(broken).errors.includes('Question 47: Missing option C.'));
+  const dup = JSON.parse(JSON.stringify(sample)); dup.questions[5].question_number = 4;
+  assert.ok(validatePaperInput(dup).errors.some((e: string) => /duplicate/.test(e)));
+  assert.ok(validatePaperInput({ ...sample, wrong_marks: 1 }).errors.length > 0);
+});
+
+test('normCorrect accepts 0-3 and A-D only', () => {
+  assert.equal(normCorrect('c'), 2); assert.equal(normCorrect(3), 3);
+  assert.equal(normCorrect(4), null); assert.equal(normCorrect(''), null); assert.equal(normCorrect(null), null);
+});
