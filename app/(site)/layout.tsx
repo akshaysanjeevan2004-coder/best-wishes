@@ -23,7 +23,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
             rel="noopener noreferrer"
             className="font-medium text-slate-700 hover:underline"
           >
-            CodeAkshay
+            CoderAkshay
           </a>
         </p>
       </footer>
