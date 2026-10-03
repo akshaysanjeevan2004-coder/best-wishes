@@ -5,7 +5,7 @@ import { UUID_RE } from '@/lib/http';
 import { textFlags } from '@/lib/flags';
 import QuestionImageRow from '@/components/admin/QuestionImageRow';
 import HindiPanel from '@/components/admin/HindiPanel';
-import { hindiComplete, HI_FIELDS } from '@/lib/lang';
+import { hindiComplete } from '@/lib/lang';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +15,7 @@ export default async function PaperDetail({ params }: { params: { id: string } }
   if (!paper) notFound();
   const { count } = await db().from('attempts').select('id', { count: 'exact', head: true }).eq('paper_id', paper.id);
   const { data } = await db().from('questions')
-    .select('id,question_number,question_text,option_a,option_b,option_c,option_d,image_path,image_whole,' + HI_FIELDS).eq('paper_id', paper.id).order('question_number');
+    .select('id,question_number,question_text,option_a,option_b,option_c,option_d,image_path,image_whole,question_text_hi,option_a_hi,option_b_hi,option_c_hi,option_d_hi,image_path_hi,image_whole_hi').eq('paper_id', paper.id).order('question_number');
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const qs = (data ?? []) as any[];
   const suspicious = qs.filter((q) => !q.image_path && textFlags({ question_text: q.question_text, options: [q.option_a, q.option_b, q.option_c, q.option_d] }).some((f) => f.level === 'image'));

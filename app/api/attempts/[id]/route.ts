@@ -3,7 +3,7 @@ import { requireCandidate } from '@/lib/auth';
 import { db, must } from '@/lib/supabase';
 import { loadOwned, syncAttempt } from '@/lib/attempts';
 import { computeTiming } from '@/lib/exam';
-import { asLang, view, HI_FIELDS } from '@/lib/lang';
+import { asLang, view } from '@/lib/lang';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +22,7 @@ export const GET = handle(async (_req, { params }) => {
   if (t.finished) return ok({ finished: true, status: 'AUTO_SUBMITTED', resultUrl: `/result/${a.id}` }); // defensive
 
   const qs = must(await db().from('questions')
-    .select('id,question_number,question_text,option_a,option_b,option_c,option_d,image_path,image_whole,' + HI_FIELDS) // NO correct_option
+    .select('id,question_number,question_text,option_a,option_b,option_c,option_d,image_path,image_whole,question_text_hi,option_a_hi,option_b_hi,option_c_hi,option_d_hi,image_path_hi,image_whole_hi') // NO correct_option
     .eq('paper_id', paper.id).eq('section', t.section).order('question_number')) as Record<string, any>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
   const lang = asLang(a.lang); // chosen before the exam started; never changes
 

@@ -4,7 +4,7 @@ import { db } from '@/lib/supabase';
 import { loadOwned, finalize } from '@/lib/attempts';
 import { computeTiming } from '@/lib/exam';
 import { imageResponse } from '@/lib/images';
-import { asLang, view, HI_FIELDS } from '@/lib/lang';
+import { asLang, view } from '@/lib/lang';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +17,7 @@ export const GET = handle(async (_req, { params }) => {
   const cand = await requireCandidate();
   const { attempt, paper } = await loadOwned(uuid(params.id), cand.id);
   const qid = uuid(params.qid, 'question');
-  const { data: q } = await db().from('questions').select('paper_id,section,image_path,image_whole,' + HI_FIELDS).eq('id', qid).maybeSingle();
+  const { data: q } = await db().from('questions').select('paper_id,section,image_path,image_whole,question_text_hi,option_a_hi,option_b_hi,option_c_hi,option_d_hi,image_path_hi,image_whole_hi').eq('id', qid).maybeSingle();
   const imagePath = q ? view(q, asLang(attempt.lang)).imagePath : null;
   if (!q || q.paper_id !== attempt.paper_id || !imagePath) throw new HttpError(404, 'NOT_FOUND', 'Image not found.');
 

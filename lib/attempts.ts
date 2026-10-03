@@ -1,7 +1,7 @@
 import { db, must } from './supabase';
 import { HttpError } from './http';
 import { computeTiming } from './exam';
-import { asLang, view, HI_FIELDS } from './lang';
+import { asLang, view } from './lang';
 
 export type Paper = {
   id: string; title: string; description: string | null; total_questions: number;
@@ -41,7 +41,7 @@ export type ResultRow = {
 /** Only call for a FINISHED attempt - this contains the correct answers. */
 export async function buildResultRows(attempt: Attempt, paper: Paper): Promise<ResultRow[]> {
   const qs = must(await db().from('questions')
-    .select('id,question_number,section,question_text,option_a,option_b,option_c,option_d,correct_option,image_path,image_whole,' + HI_FIELDS)
+    .select('id,question_number,section,question_text,option_a,option_b,option_c,option_d,correct_option,image_path,image_whole,question_text_hi,option_a_hi,option_b_hi,option_c_hi,option_d_hi,image_path_hi,image_whole_hi')
     .eq('paper_id', paper.id).order('question_number')) as Record<string, any>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
   const ans = must(await db().from('answers').select('question_id,selected_option').eq('attempt_id', attempt.id)) as
     { question_id: string; selected_option: number | null }[];

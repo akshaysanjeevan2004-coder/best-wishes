@@ -1,7 +1,7 @@
 import { db, must } from './supabase';
 import { todayStr } from './config';
 import type { Paper } from './attempts';
-import { HI_FIELDS, hindiComplete } from './lang';
+import { hindiComplete } from './lang';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export async function getTodaysPapers(): Promise<(Paper & { slot: number })[]> {
@@ -78,7 +78,7 @@ export async function queryAttempts(f: ResultFilters, limit = 500) {
 
 /** Is a COMPLETE Hindi version available for this paper? (Only then do candidates get the language choice.) */
 export async function hindiStatus(paperId: string): Promise<{ complete: number; total: number; ready: boolean }> {
-  const rows = must(await db().from('questions').select(HI_FIELDS).eq('paper_id', paperId)) as any[];
+  const rows = must(await db().from('questions').select('question_text_hi,option_a_hi,option_b_hi,option_c_hi,option_d_hi,image_path_hi,image_whole_hi').eq('paper_id', paperId)) as any[];
   const complete = rows.filter(hindiComplete).length;
   return { complete, total: rows.length, ready: rows.length > 0 && complete === rows.length };
 }
