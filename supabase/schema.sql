@@ -46,6 +46,17 @@ create table if not exists questions (
 );
 alter table questions add column if not exists image_path text;   -- (for databases created before image support)
 alter table questions add column if not exists image_whole boolean not null default true;
+
+-- Hindi version of each question (optional). Same question numbers, same correct answer.
+alter table questions add column if not exists question_text_hi text;
+alter table questions add column if not exists option_a_hi text;
+alter table questions add column if not exists option_b_hi text;
+alter table questions add column if not exists option_c_hi text;
+alter table questions add column if not exists option_d_hi text;
+alter table questions add column if not exists image_path_hi text;
+alter table questions add column if not exists image_whole_hi boolean not null default true;
+-- Language the candidate chose BEFORE starting (cannot change afterwards).
+alter table attempts add column if not exists lang text not null default 'en' check (lang in ('en','hi'));
 create index if not exists questions_paper_section_idx on questions(paper_id, section, question_number);
 
 create table if not exists daily_papers (
@@ -221,6 +232,23 @@ begin
   return pid;
 end $$;
 
+-- Attach the Hindi text of a paper in one transaction (matched by question number).
+create or replace function apply_hindi(p_paper uuid, p jsonb) returns int
+language plpgsql as $$
+declare n int;
+begin
+  update questions qu set
+    question_text_hi = nullif(btrim(e.item->>'question_text'), ''),
+    option_a_hi = nullif(btrim(e.item->'options'->>0), ''),
+    option_b_hi = nullif(btrim(e.item->'options'->>1), ''),
+    option_c_hi = nullif(btrim(e.item->'options'->>2), ''),
+    option_d_hi = nullif(btrim(e.item->'options'->>3), '')
+  from jsonb_array_elements(p) as e(item)
+  where qu.paper_id = p_paper and qu.question_number = (e.item->>'question_number')::int;
+  get diagnostics n = row_count;
+  return n;
+end $$;
+
 -- ---------------------------------------------------------------------
 -- PRIVATE Storage bucket for question images (tables / equations / pictures).
 -- Private = nobody can open files directly; the app serves an image only to a
@@ -233,3 +261,4 @@ on conflict (id) do nothing;
 revoke all on function finalize_attempt(uuid, text) from public, anon, authenticated;
 revoke all on function finalize_expired()           from public, anon, authenticated;
 revoke all on function import_paper(jsonb)          from public, anon, authenticated;
+revoke all on function apply_hindi(uuid, jsonb)     from public, anon, authenticated;

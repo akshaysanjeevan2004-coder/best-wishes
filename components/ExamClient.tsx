@@ -12,8 +12,8 @@ type State = {
 const L = ['A', 'B', 'C', 'D'];
 const mmss = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
-export default function ExamClient({ paper, candidateName, initialAttemptId }:
-  { paper: Paper; candidateName: string; initialAttemptId: string | null }) {
+export default function ExamClient({ paper, candidateName, initialAttemptId, hasHindi = false }:
+  { paper: Paper; candidateName: string; initialAttemptId: string | null; hasHindi?: boolean }) {
   const router = useRouter();
   const [attemptId, setAttemptId] = useState<string | null>(initialAttemptId);
   const [st, setSt] = useState<State | null>(null);
@@ -26,6 +26,7 @@ export default function ExamClient({ paper, candidateName, initialAttemptId }:
   const [err, setErr] = useState('');
   const [confirm, setConfirm] = useState(false);
   const [agree, setAgree] = useState(false);
+  const [lang, setLang] = useState<'en' | 'hi'>('en');
   const [busy, setBusy] = useState(false);
   const offset = useRef(0);          // serverNow - clientNow (only used to DISPLAY the countdown)
   const syncing = useRef(false);
@@ -97,7 +98,7 @@ export default function ExamClient({ paper, candidateName, initialAttemptId }:
   async function start() {
     setBusy(true); setErr('');
     try {
-      const r = await fetch('/api/attempts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paperId: paper.id }) });
+      const r = await fetch('/api/attempts', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paperId: paper.id, lang }) });
       const d = await r.json();
       if (!r.ok) { setErr(d.message || 'Could not start the exam.'); return; }
       if (d.status && d.status !== 'IN_PROGRESS') { router.push(`/result/${d.attemptId}`); return; }
@@ -153,6 +154,19 @@ export default function ExamClient({ paper, candidateName, initialAttemptId }:
               The next section opens by itself. Refreshing, closing the tab or losing internet does <b>not</b> pause the clock.
               Your attempt can be started only once.
             </div>
+            {hasHindi && (
+              <fieldset className="mt-5">
+                <legend className="text-sm font-semibold">Question language / प्रश्नों की भाषा</legend>
+                <div className="mt-2 grid grid-cols-2 gap-3">
+                  {([['en', 'English'], ['hi', 'हिन्दी']] as const).map(([v, label]) => (
+                    <label key={v} className={`flex cursor-pointer items-center gap-2 rounded-lg border-2 px-4 py-2.5 ${lang === v ? 'border-brand-600 bg-brand-50' : 'border-slate-200'}`}>
+                      <input type="radio" name="lang" checked={lang === v} onChange={() => setLang(v)} /> <span className="font-medium">{label}</span>
+                    </label>
+                  ))}
+                </div>
+                <p className="mt-1 text-xs text-slate-500">You cannot change the language after you start. / शुरू करने के बाद भाषा बदली नहीं जा सकती।</p>
+              </fieldset>
+            )}
             <label className="mt-5 flex items-start gap-3 text-sm">
               <input type="checkbox" className="mt-1 h-4 w-4" checked={agree} onChange={(e) => setAgree(e.target.checked)} />
               I have read the instructions and I am ready to begin.

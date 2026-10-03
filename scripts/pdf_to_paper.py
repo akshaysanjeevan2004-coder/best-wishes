@@ -293,6 +293,7 @@ def main():
     ap.add_argument("--expected", type=int, default=100)
     ap.add_argument("--dpi", type=int, default=170, help="resolution of the crops")
     ap.add_argument("--no-crops", action="store_true", help="do not render crop images")
+    ap.add_argument("--all-images", action="store_true", help="treat EVERY question as a screenshot (use for Hindi PDFs whose text comes out garbled): crops for all questions")
     ap.add_argument("--header-height", type=float, default=None, help="force header height in points (default: auto-detect logo + rule)")
     ap.add_argument("--footer-height", type=float, default=None)
     ap.add_argument("--strip", default=r"adda\s*247|get\s*it\s*on|google\s*play|telegram|join\s+our", help="regex of watermark/ad lines to ignore")
@@ -337,6 +338,8 @@ def main():
             e = nxt[0] if nxt else end_all
             rec, errs = analyse(q, items, a, e, pages, None)
             errors += errs
+            if args.all_images:
+                rec["flags"].insert(0, {"level": "image", "reason": "all-images mode"})
             if rec["correct_option"] is None:
                 rec["correct_option"] = key.get(q)
             elif q in key and key[q] != rec["correct_option"]:

@@ -70,3 +70,18 @@ test('text clues flag tables / empty options / math symbols, but not plain quest
   assert.ok(textFlags({ question_text: 'Pick one', options: ['1', '', '3', '4'] }).some((f) => f.level === 'image'));
   assert.ok(textFlags({ question_text: 'p = √3 + √7', options: ['a', 'b', 'c', 'd'] }).some((f) => f.level === 'check'));
 });
+
+import { view, hindiComplete, asLang } from '../lib/lang';
+test('language: Hindi only usable when text is complete or a whole screenshot exists; English untouched', () => {
+  const base = { question_text: 'Q', option_a: 'a', option_b: 'b', option_c: 'c', option_d: 'd', image_path: null, image_whole: true };
+  assert.equal(asLang('hi'), 'hi'); assert.equal(asLang('xx'), 'en'); assert.equal(asLang(undefined), 'en');
+  assert.deepEqual(view(base, 'en').options, ['a', 'b', 'c', 'd']);
+  assert.equal(hindiComplete(base), false); // no Hindi yet
+  const hiText = { ...base, question_text_hi: 'प्रश्न', option_a_hi: 'क', option_b_hi: 'ख', option_c_hi: 'ग', option_d_hi: 'घ' };
+  assert.equal(hindiComplete(hiText), true);
+  assert.equal(view(hiText, 'hi').text, 'प्रश्न');
+  assert.equal(hindiComplete({ ...hiText, option_c_hi: null }), false);                      // one option missing
+  assert.equal(hindiComplete({ ...base, image_path_hi: 'x/hi-q001.png', image_whole_hi: true }), true);   // whole screenshot is enough
+  assert.equal(hindiComplete({ ...base, image_path_hi: 'x/hi-q001.png', image_whole_hi: false }), false); // figure-only needs text
+  assert.equal(view({ ...base, image_path: 'en.png' }, 'hi').imagePath, null); // English image never leaks into Hindi
+});

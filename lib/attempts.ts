@@ -1,6 +1,7 @@
 import { db, must } from './supabase';
 import { HttpError } from './http';
 import { computeTiming } from './exam';
+import { asLang, view, HI_FIELDS } from './lang';
 
 export type Paper = {
   id: string; title: string; description: string | null; total_questions: number;
@@ -40,16 +41,18 @@ export type ResultRow = {
 /** Only call for a FINISHED attempt - this contains the correct answers. */
 export async function buildResultRows(attempt: Attempt, paper: Paper): Promise<ResultRow[]> {
   const qs = must(await db().from('questions')
-    .select('id,question_number,section,question_text,option_a,option_b,option_c,option_d,correct_option,image_path,image_whole')
+    .select('id,question_number,section,question_text,option_a,option_b,option_c,option_d,correct_option,image_path,image_whole,' + HI_FIELDS)
     .eq('paper_id', paper.id).order('question_number')) as Record<string, any>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
   const ans = must(await db().from('answers').select('question_id,selected_option').eq('attempt_id', attempt.id)) as
     { question_id: string; selected_option: number | null }[];
   const map = new Map(ans.map((a) => [a.question_id, a.selected_option]));
+  const lang = asLang(attempt.lang);
   return qs.map((q) => {
     const sel = map.get(q.id) ?? null;
+    const v = view(q, lang);
     return {
-      id: q.id, image: !!q.image_path, imageWhole: !!q.image_path && q.image_whole !== false, number: q.question_number, section: q.section, text: q.question_text,
-      options: [q.option_a, q.option_b, q.option_c, q.option_d],
+      id: q.id, image: !!v.imagePath, imageWhole: v.whole, number: q.question_number, section: q.section, text: v.text,
+      options: v.options,
       yourOption: sel, correctOption: q.correct_option,
       status: sel === null ? 'UNANSWERED' : sel === q.correct_option ? 'CORRECT' : 'WRONG',
     };

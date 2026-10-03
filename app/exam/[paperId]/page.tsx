@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { redirect, notFound } from 'next/navigation';
 import { getCandidate } from '@/lib/auth';
 import { db } from '@/lib/supabase';
-import { getPaper, isScheduledToday } from '@/lib/queries';
+import { getPaper, isScheduledToday, hindiStatus } from '@/lib/queries';
 import { UUID_RE } from '@/lib/http';
 import ExamClient from '@/components/ExamClient';
 
@@ -29,12 +29,14 @@ export default async function ExamPage({ params }: { params: { paperId: string }
     );
   }
 
+  const hasHindi = att ? false : (await hindiStatus(paper.id)).ready; // language is only chosen before starting
   return (
     <ExamClient
       paper={{ id: paper.id, title: paper.title, totalQuestions: paper.total_questions, sections: paper.section_count,
         perSection: paper.questions_per_section, sectionMinutes: paper.section_seconds / 60 }}
       candidateName={cand.name}
       initialAttemptId={att?.id ?? null}
+      hasHindi={hasHindi}
     />
   );
 }

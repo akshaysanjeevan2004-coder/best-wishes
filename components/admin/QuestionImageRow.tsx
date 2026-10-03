@@ -3,8 +3,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import ImageAttach from './ImageAttach';
 
-export default function QuestionImageRow({ paperId, q, locked }:
-  { paperId: string; q: { id: string; number: number; text: string; hasImage: boolean; whole: boolean }; locked: boolean }) {
+export default function QuestionImageRow({ paperId, q, locked, lang = 'en' }:
+  { paperId: string; q: { id: string; number: number; text: string; hasImage: boolean; whole: boolean }; locked: boolean; lang?: 'en' | 'hi' }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [whole, setWhole] = useState(q.whole);
@@ -14,20 +14,20 @@ export default function QuestionImageRow({ paperId, q, locked }:
   async function upload(b: Blob) {
     setBusy(true); setErr('');
     const fd = new FormData();
-    fd.append('paperId', paperId); fd.append('questionNumber', String(q.number)); fd.append('whole', String(whole)); fd.append('file', b, 'q.png');
+    fd.append('paperId', paperId); fd.append('questionNumber', String(q.number)); fd.append('whole', String(whole)); fd.append('lang', lang); fd.append('file', b, 'q.png');
     const r = await fetch('/api/admin/questions/image', { method: 'POST', body: fd });
     if (!r.ok) setErr((await r.json().catch(() => ({}))).message || 'Upload failed'); else { setOpen(false); router.refresh(); }
     setBusy(false);
   }
   async function remove() {
     if (!confirm(`Remove the screenshot from Q${q.number}?`)) return;
-    const r = await fetch(`/api/admin/questions/image?paper=${paperId}&q=${q.number}`, { method: 'DELETE' });
+    const r = await fetch(`/api/admin/questions/image?paper=${paperId}&q=${q.number}&lang=${lang}`, { method: 'DELETE' });
     if (!r.ok) alert((await r.json().catch(() => ({}))).message || 'Failed'); else router.refresh();
   }
   async function changeMode(w: boolean) {
     setWhole(w);
     if (!q.hasImage) return;
-    const r = await fetch('/api/admin/questions/image', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paperId, questionNumber: q.number, whole: w }) });
+    const r = await fetch('/api/admin/questions/image', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paperId, questionNumber: q.number, whole: w, lang }) });
     if (!r.ok) alert((await r.json().catch(() => ({}))).message || 'Failed'); else router.refresh();
   }
 
@@ -36,7 +36,7 @@ export default function QuestionImageRow({ paperId, q, locked }:
       <td className="td font-medium">Q{q.number}</td>
       <td className="td max-w-md"><span className="line-clamp-2 text-slate-600">{q.text}</span></td>
       <td className="td">
-        {q.hasImage ? <a className="font-medium text-brand-700 hover:underline" href={`/api/admin/images/${q.id}`} target="_blank" rel="noreferrer">View screenshot</a> : <span className="text-slate-400">none</span>}
+        {q.hasImage ? <a className="font-medium text-brand-700 hover:underline" href={`/api/admin/images/${q.id}?lang=${lang}`} target="_blank" rel="noreferrer">View screenshot</a> : <span className="text-slate-400">none</span>}
         {q.hasImage && <div className="mt-1 text-xs text-slate-500">{whole ? 'whole question' : 'figure only'}</div>}
       </td>
       <td className="td text-right">

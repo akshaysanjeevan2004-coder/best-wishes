@@ -3,6 +3,7 @@ import { requireCandidate } from '@/lib/auth';
 import { db, must } from '@/lib/supabase';
 import { loadOwned, syncAttempt } from '@/lib/attempts';
 import { computeTiming } from '@/lib/exam';
+import { asLang, view, HI_FIELDS } from '@/lib/lang';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,8 +22,9 @@ export const GET = handle(async (_req, { params }) => {
   if (t.finished) return ok({ finished: true, status: 'AUTO_SUBMITTED', resultUrl: `/result/${a.id}` }); // defensive
 
   const qs = must(await db().from('questions')
-    .select('id,question_number,question_text,option_a,option_b,option_c,option_d,image_path,image_whole') // NO correct_option
-    .eq('paper_id', paper.id).eq('section', t.section).order('question_number')) as Record<string, string | number | boolean | null>[];
+    .select('id,question_number,question_text,option_a,option_b,option_c,option_d,image_path,image_whole,' + HI_FIELDS) // NO correct_option
+    .eq('paper_id', paper.id).eq('section', t.section).order('question_number')) as Record<string, any>[]; // eslint-disable-line @typescript-eslint/no-explicit-any
+  const lang = asLang(a.lang); // chosen before the exam started; never changes
 
   const ans = must(await db().from('answers').select('question_id,selected_option,questions(section)')
     .eq('attempt_id', a.id)) as unknown as { question_id: string; selected_option: number | null; questions: { section: number } | { section: number }[] }[];
@@ -42,12 +44,14 @@ export const GET = handle(async (_req, { params }) => {
     section: t.section, sectionCount: paper.section_count, sectionSeconds: paper.section_seconds,
     sectionEndsAt: t.sectionEndsAtMs, examEndsAt: t.examEndsAtMs,
     paperTitle: paper.title, candidateName: a.candidate_name,
-    questions: qs.map((q) => ({
-      id: q.id, number: q.question_number, text: q.question_text,
-      options: [q.option_a, q.option_b, q.option_c, q.option_d],
-      image: q.image_path ? `/api/attempts/${a.id}/image/${q.id}` : null,
-      imageWhole: q.image_path ? q.image_whole !== false : false,
-    })),
+    questions: qs.map((q) => {
+      const v = view(q, lang);
+      return {
+        id: q.id, number: q.question_number, text: v.text, options: v.options,
+        image: v.imagePath ? `/api/attempts/${a.id}/image/${q.id}` : null,
+        imageWhole: v.whole,
+      };
+    }),
     answers,
     sections: Array.from({ length: paper.section_count }, (_, i) => ({
       number: i + 1,
